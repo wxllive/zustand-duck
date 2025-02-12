@@ -1,0 +1,43 @@
+{
+  "name": "zustand-duck",
+  "version": "0.0.0",
+  "description": "Simple reducer writing and cross-process state sharing.",
+  "keywords": [
+    "zustand",
+    "redux",
+    "effects",
+    "typescript"
+  ],
+  "main": "dist/index.js",
+  "scripts": {
+    "prepublishOnly": "npm run test && npm run build",
+    "dev": "tsc -w",
+    "build": "tsc",
+    "test": "jest"
+  },
+  "files": [
+    "dist/*",
+    "!*.map",
+    "!*.tsbuildinfo"
+  ],
+  "author": "wxllive.com@gmail.com",
+  "license": "MIT",
+  "homepage": "https://github.com/wxllive/zustand-duck",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wxllive/zustand-duck.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wxllive/zustand-duck/issues"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "react": "^18.3.1",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "peerDependencies": {
+    "zustand": "*"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "module": "ES2015",
+    "moduleResolution": "Node",
+    "target": "ESNext",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "declaration": true,
+    "declarationDir": "dist",
+    "outDir": "dist",
+    "baseUrl": ".",
+    "sourceMap": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
