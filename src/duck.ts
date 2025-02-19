@@ -16,7 +16,7 @@ export type AsyncActions<KTP extends ActionKeyToPayload> = {
 
 export type ActionRewrite<P extends any[] = any[]> = (data: { action: string; payload: P }, origin: (...args: P) => P) => Promise<P> | P;
 
-export type ReduxOptions<S, KTP extends ActionKeyToPayload> = {
+export type DuckOptions<S, KTP extends ActionKeyToPayload> = {
   /**
    * 
    */
@@ -46,7 +46,7 @@ type CustomStoreApiMethods<S, KTP extends ActionKeyToPayload> = {
 
 export type CustomStoreApi<S, KTP extends ActionKeyToPayload> = StoreApi<S> & CustomStoreApiMethods<S, KTP>;
 
-type WithReduxSimilar<S, KTP> = S extends StoreApi<infer T>
+type WithDuck<S, KTP> = S extends StoreApi<infer T>
   ? S & (KTP extends ActionKeyToPayload
     ? CustomStoreApiMethods<T, KTP>
     : never)
@@ -54,17 +54,17 @@ type WithReduxSimilar<S, KTP> = S extends StoreApi<infer T>
 
 declare module 'zustand/vanilla' {
   interface StoreMutators<S, A> {
-    'zustand/duck': WithReduxSimilar<S, A>
+    'zustand/duck': WithDuck<S, A>
   }
 }
 
-export type ReduxSimilar = <
+export type Duck = <
   T,
   A extends ActionKeyToPayload,
   Cms extends [StoreMutatorIdentifier, unknown][] = [],
->(options: ReduxOptions<T, A>) => StateCreator<T, Cms, [['zustand/duck', A]]>
+>(options: DuckOptions<T, A>) => StateCreator<T, Cms, [['zustand/duck', A]]>
 
-const rawDuck = <S, KTP extends ActionKeyToPayload>(options: ReduxOptions<S, KTP>) =>
+const rawDuck = <S, KTP extends ActionKeyToPayload>(options: DuckOptions<S, KTP>) =>
   (
     set: StoreApi<S>['setState'],
     get: StoreApi<S>['getState'],
@@ -136,4 +136,4 @@ const rawDuck = <S, KTP extends ActionKeyToPayload>(options: ReduxOptions<S, KTP
     return { ...state };
   };
 
-export const duck = rawDuck as unknown as ReduxSimilar;
+export const duck = rawDuck as unknown as Duck;
