@@ -1,6 +1,6 @@
 import { describe, expect, test, beforeEach, afterEach, jest } from '@jest/globals';
 import { duck } from '../src';
-import { create } from 'zustand';
+import { createStore } from 'zustand/vanilla';
 
 interface ThemeState {
   theme: 'dark' | 'light';
@@ -8,7 +8,7 @@ interface ThemeState {
 
 describe('duck', () => {
   const state: ThemeState = { theme: 'light' };
-  const useTheme = create(
+  const themeStore = createStore(
     duck({
       state,
       reducers: {
@@ -20,34 +20,34 @@ describe('duck', () => {
   );
 
   beforeEach(() => {
-    useTheme.actions.reset();
+    themeStore.actions.reset();
   });
 
   test('dispatch action', async () => {
-    expect(useTheme.actions.setTheme).toBeDefined();
-    expect(useTheme.getState().theme).toBe('light');
+    expect(themeStore.actions.setTheme).toBeDefined();
+    expect(themeStore.getState().theme).toBe('light');
 
-    useTheme.actions.setTheme('dark');
+    themeStore.actions.setTheme('dark');
 
-    expect(useTheme.getState().theme).toBe('dark');
+    expect(themeStore.getState().theme).toBe('dark');
   });
 
   test('wait', async () => {
     const spy = jest.fn();
-    const promise = useTheme.wait(state => state.theme === 'dark').then(spy);
+    const promise = themeStore.wait(state => state.theme === 'dark').then(spy);
 
     expect(spy).not.toHaveBeenCalled();
-    useTheme.actions.setTheme('dark');
+    themeStore.actions.setTheme('dark');
     await promise;
     expect(spy).toHaveBeenCalled();
   });
 
   test('onAction', async () => {
     const spy = jest.fn();
-    useTheme.onAction('setTheme', spy);
+    themeStore.onAction('setTheme', spy);
 
     expect(spy).not.toHaveBeenCalled();
-    useTheme.actions.setTheme('dark');
+    themeStore.actions.setTheme('dark');
     expect(spy).toHaveBeenCalledWith('dark');
   });
 });

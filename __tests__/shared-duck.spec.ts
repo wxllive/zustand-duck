@@ -1,7 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach, jest } from '@jest/globals';
 import { duck, MASTER_PORT_ID, sharedDuck, SharedDuckPort } from '../src';
-import { create } from 'zustand';
 import { Subscribe } from './Subscribe';
+import { createStore } from 'zustand/vanilla';
 
 interface ThemeState {
   theme: 'dark' | 'light';
@@ -31,7 +31,7 @@ describe('share duck', () => {
   const state: ThemeState = { theme: 'light' };
   // 由于测试用例代码都在一个进程中，无法直接使用同一个store，所以下面用同一份代码逻辑创建多个来模拟多进程的场景
   const createThemeStore = (port: SharedDuckPort) => {
-    return create(
+    return createStore(
       sharedDuck({
         state,
         name: 'theme',
@@ -44,27 +44,27 @@ describe('share duck', () => {
       })
     );
   };
-  let useThemeMaster: ReturnType<typeof createThemeStore>;
-  let useThemeReplica: ReturnType<typeof createThemeStore>;
+  let themeStoreMaster: ReturnType<typeof createThemeStore>;
+  let themeStoreReplica: ReturnType<typeof createThemeStore>;
 
   beforeEach(() => {
-    useThemeMaster = createThemeStore(createPort(MASTER_PORT_ID));
+    themeStoreMaster = createThemeStore(createPort(MASTER_PORT_ID));
     portsMap.delete('replica');
   });
 
   test('share ready', async () => {
-    await useThemeMaster.actions.setTheme('dark');
-    useThemeReplica = createThemeStore(createPort('replica'));
-    expect(useThemeReplica.getState().theme).toBe('light');
-    await useThemeReplica.ready();
-    expect(useThemeReplica.getState().theme).toBe('dark');
+    await themeStoreMaster.actions.setTheme('dark');
+    themeStoreReplica = createThemeStore(createPort('replica'));
+    expect(themeStoreReplica.getState().theme).toBe('light');
+    await themeStoreReplica.ready();
+    expect(themeStoreReplica.getState().theme).toBe('dark');
   });
 
   test('replica action', async () => {
-    useThemeReplica = createThemeStore(createPort('replica'));
-    await useThemeReplica.ready();
-    expect(useThemeReplica.getState().theme).toBe('light');
-    await useThemeReplica.actions.setTheme('dark');
-    expect(useThemeMaster.getState().theme).toBe('dark');
+    themeStoreReplica = createThemeStore(createPort('replica'));
+    await themeStoreReplica.ready();
+    expect(themeStoreReplica.getState().theme).toBe('light');
+    await themeStoreReplica.actions.setTheme('dark');
+    expect(themeStoreMaster.getState().theme).toBe('dark');
   });
 });
