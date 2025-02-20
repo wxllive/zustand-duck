@@ -1,8 +1,10 @@
 import { type ActionKeyToPayload, type ActionRewrite, type DuckOptions, duck } from '../duck';
+import { SharedDuckChannels } from './shared-duck-channel';
 
 export type SharedDuckPortMessage = {
   portId: string;
   event: string;
+  channel: string;
   name: string;
   data: any;
 }
@@ -12,12 +14,14 @@ export type SharedDuckPortMessageHandler = (message: SharedDuckPortMessage) => v
 export interface SharedDuckPort {
   id: string;
   send: (id: string, message: SharedDuckPortMessage) => void;
-  onMessage: (handler: SharedDuckPortMessageHandler) => void;
+  onMessage: (handler: SharedDuckPortMessageHandler) => () => void;
 }
 
 export type SharedDuckOptions<S, KTP extends ActionKeyToPayload> = DuckOptions<S, KTP> & {
   name: string;
   port: SharedDuckPort;
+  channel?: string;
+  channels?: SharedDuckChannels,
 };
 
 export const MASTER_PORT_ID = 'master';
@@ -25,7 +29,17 @@ export const MASTER_PORT_ID = 'master';
 const delay = () => new Promise(resolve => setTimeout(resolve, 0));
 
 export const sharedDuck = <S, KTP extends ActionKeyToPayload>(options: SharedDuckOptions<S, KTP>) => {
-  const { name, port } = options;
+  const { name, port, channel = '', channels } = options;
+  const unsubscribeList: (() => void)[] = [];
+
+  if (channels) {
+    let unsubscribeChannel = channels.subscribe((_channel, event) => {
+      if (_channel === channel && event === 'remove') {
+        unsubscribeChannel();
+        unsubscribeList.forEach(fn => fn());
+      }
+    });
+  }
 
   if (port.id === MASTER_PORT_ID) {
     const mirrorPortIdSet = new Set<string>();
@@ -34,7 +48,8 @@ export const sharedDuck = <S, KTP extends ActionKeyToPayload>(options: SharedDuc
         port.send(portId, {
           event: 'forward/replica',
           portId: MASTER_PORT_ID,
-          name: options.name,
+          name,
+          channel,
           data: { action, payload },
         })
       });
@@ -42,11 +57,27 @@ export const sharedDuck = <S, KTP extends ActionKeyToPayload>(options: SharedDuc
     };
     options = {
       initialize: async (api, resolve) => {
-        // delay 0s
-        await delay();
+        if (channel === (channels?.default ?? '')) {
+          // only default channel need delay 0s
+          // beause other channel always create later
+          await delay();
+        }
 
-        port.onMessage(message => {
-          if (message.name !== options.name) { return; }
+        const unsubscribe = port.onMessage(message => {
+          if (message.name !== name) { return; }
+          // only default channel handle register event
+          if (channel === channels?.default && message.event === 'register/replica') {
+            channels?.notify(message.channel, 'add');
+            port.send(message.portId, {
+              event: 'register/success',
+              name,
+              channel: message.channel,
+              portId: MASTER_PORT_ID,
+              data: {},
+            });
+            return;
+          }
+          if (message.channel !== channel) { return; }
 
           switch (message.event) {
             case 'state/request': {
@@ -54,7 +85,8 @@ export const sharedDuck = <S, KTP extends ActionKeyToPayload>(options: SharedDuc
               const state = api.getState();
               port.send(message.portId, {
                 event: 'state/response',
-                name: options.name,
+                name,
+                channel,
                 portId: MASTER_PORT_ID,
                 data: state,
               });
@@ -65,7 +97,8 @@ export const sharedDuck = <S, KTP extends ActionKeyToPayload>(options: SharedDuc
                 port.send(portId, {
                   event: 'forward/replica',
                   portId: MASTER_PORT_ID,
-                  name: options.name,
+                  name,
+                  channel,
                   data: message.data,
                 });
                 api.originActions[message.data.action](...message.data.payload);
@@ -74,6 +107,8 @@ export const sharedDuck = <S, KTP extends ActionKeyToPayload>(options: SharedDuc
             }
           }
         });
+
+        unsubscribeList.push(unsubscribe);
         resolve(api);
       },
       actionRewrite,
@@ -89,6 +124,7 @@ export const sharedDuck = <S, KTP extends ActionKeyToPayload>(options: SharedDuc
         event: 'forward/master',
         portId: port.id,
         name,
+        channel,
         data: {
           id: actionId,
           action,
@@ -103,8 +139,9 @@ export const sharedDuck = <S, KTP extends ActionKeyToPayload>(options: SharedDuc
       initialize: async (api, resolve) => {
         await delay();
 
-        port.onMessage(message => {
-          if (message.name !== options.name) { return; }
+        const unsubscribe = port.onMessage(message => {
+          if (message.name !== name) { return; }
+          if (message.channel !== channel) { return; }
 
           switch (message.event) {
             case 'state/response': {
@@ -124,11 +161,35 @@ export const sharedDuck = <S, KTP extends ActionKeyToPayload>(options: SharedDuc
             }
           }
         });
+        unsubscribeList.push(unsubscribe);
+
+        if (channels) {
+          await new Promise(resolve => {
+            // register replica
+            const unsubscribe = port.onMessage((message) => {
+              if (message.name !== name) { return; }
+              if (message.channel !== channel) { return; }
+              if (message.event === 'register/success') {
+                resolve(void 0);
+                unsubscribe();
+              }
+            });
+            unsubscribeList.push(unsubscribe);
+            port.send(MASTER_PORT_ID, {
+              event: 'register/replica',
+              name,
+              portId: port.id,
+              channel,
+              data: {},
+            });
+          });
+        }
 
         port.send(MASTER_PORT_ID, {
           event: 'state/request',
-          name: options.name,
+          name,
           portId: port.id,
+          channel,
           data: {},
         });
       },
