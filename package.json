@@ -1,6 +1,6 @@
 {
   "name": "zustand-duck",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Simple reducer writing and cross-process state sharing.",
   "keywords": [
     "zustand",
