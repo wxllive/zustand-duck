@@ -65,8 +65,8 @@ import { SharedDuckPort } from 'zustand-duck';
 // We need to leave the port field blank first and implement it differently in different processes.
 export const port: SharedDuckPort = {
   id: '',
-  send: () => (),
-  onMessage: () => () => (),
+  send: () => void 0,
+  onMessage: () => () => void 0,
 };
 
 ```
